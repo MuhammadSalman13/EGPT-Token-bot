@@ -41,7 +41,7 @@ MICRO_TOKENS_INVITE = 100000
 MICRO_TOKENS_TO_EGPT = 1000000  # 1,000,000 Micro = 10 EGPT
 WITHDRAW_MIN_EGPT = 100
 INVITE_REQUIREMENT = 10
-ADMIN_IDS = [123456789]  # ضع Telegram ID الخاص بك
+ADMIN_IDS = [5808513261]  # ضع Telegram ID الخاص بك
 BOT_USERNAME = "EGPTCOINSBot"  # اسم البوت بدون @
 
 # -------- قائمة الترحيب الثابتة تحت خانة الكتابة ----------
