@@ -1,37 +1,58 @@
 import os
+import time
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-# قراءة متغير البيئة DATABASE_URL
+# اقرأ الـ DATABASE_URL من environment
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-if not DATABASE_URL:
-    raise ValueError("متغير البيئة DATABASE_URL مش موجود!")
+# عدد المحاولات قبل الفشل
+MAX_RETRIES = 5
+RETRY_DELAY = 5  # ثواني بين المحاولات
 
-try:
-    # الاتصال بالقاعدة
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-    cursor = conn.cursor()
-    print("✅ تم الاتصال بالقاعدة بنجاح!")
+conn = None
+for attempt in range(1, MAX_RETRIES + 1):
+    try:
+        print(f"Attempt {attempt}: Connecting to the database...")
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        print("✅ Database connection successful!")
+        break
+    except Exception as e:
+        print(f"❌ Failed to connect: {e}")
+        if attempt < MAX_RETRIES:
+            print(f"Retrying in {RETRY_DELAY} seconds...")
+            time.sleep(RETRY_DELAY)
+        else:
+            print("❌ All retries failed. Exiting.")
+            raise e
 
-    # إنشاء جدول todos لو مش موجود
-    create_table_query = """
-    CREATE TABLE IF NOT EXISTS todos (
-        id SERIAL PRIMARY KEY,
-        task TEXT NOT NULL,
-        completed BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    """
-    cursor.execute(create_table_query)
+# تأكد إن الجدول موجود
+with conn.cursor() as cur:
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS todos (
+            id SERIAL PRIMARY KEY,
+            task TEXT NOT NULL,
+            done BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
     conn.commit()
-    print("✅ جدول todos جاهز!")
+    print("✅ Table 'todos' is ready.")
 
-except Exception as e:
-    print("❌ فشل الاتصال بالقاعدة:", e)
+# هنا تبدأ شيفرة البوت
+# مثال dummy loop لتأكيد التشغيل
+try:
+    while True:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM todos;")
+            count = cur.fetchone()['count']
+            print(f"📝 Total todos: {count}")
+        time.sleep(10)
+except KeyboardInterrupt:
+    print("Stopping bot...")
 
+# اغلق الاتصال عند الانتهاء
 finally:
-    if 'cursor' in locals():
-        cursor.close()
-    if 'conn' in locals():
+    if conn:
         conn.close()
+        print("✅ Database connection closed.")
