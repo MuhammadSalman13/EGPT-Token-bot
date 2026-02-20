@@ -1,0 +1,1 @@
+web: python egpt_full_bot_postgres.py
