@@ -1,1 +1,1 @@
-web: python egpt_full_bot_postgres.py
+worker: python egpt_full_bot_postgres.py
