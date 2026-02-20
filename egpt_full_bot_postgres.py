@@ -1,8 +1,8 @@
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from telegram import Bot
-from telegram.ext import Updater, CommandHandler
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 # قراءة المتغيرات من Environment
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -31,39 +31,36 @@ CREATE TABLE IF NOT EXISTS todos (
 conn.commit()
 print("✅ Table 'todos' ready!")
 
-# إعداد بوت التليجرام
-bot = Bot(token=BOT_TOKEN)
-updater = Updater(token=BOT_TOKEN, use_context=True)
-dispatcher = updater.dispatcher
+# إعداد البوت باستخدام ApplicationBuilder (v20+)
+app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# أوامر بسيطة
-def start(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text="بوت EGPT شغال!")
+# أوامر البوت
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("بوت EGPT شغال!")
 
-def add_todo(update, context):
+async def add_todo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     task = " ".join(context.args)
     if not task:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="اكتب المهمة بعد الأمر!")
+        await update.message.reply_text("اكتب المهمة بعد الأمر!")
         return
     cursor.execute("INSERT INTO todos (task) VALUES (%s) RETURNING id;", (task,))
     conn.commit()
-    context.bot.send_message(chat_id=update.effective_chat.id, text=f"تم إضافة المهمة: {task}")
+    await update.message.reply_text(f"تم إضافة المهمة: {task}")
 
-def list_todos(update, context):
+async def list_todos(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cursor.execute("SELECT id, task, done FROM todos ORDER BY id;")
     rows = cursor.fetchall()
     if not rows:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="لا توجد مهام بعد!")
+        await update.message.reply_text("لا توجد مهام بعد!")
         return
     message = "\n".join([f"{row['id']}. [{'✅' if row['done'] else '❌'}] {row['task']}" for row in rows])
-    context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+    await update.message.reply_text(message)
 
 # تسجيل الأوامر
-dispatcher.add_handler(CommandHandler("start", start))
-dispatcher.add_handler(CommandHandler("add", add_todo))
-dispatcher.add_handler(CommandHandler("list", list_todos))
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("add", add_todo))
+app.add_handler(CommandHandler("list", list_todos))
 
 # تشغيل البوت
 print("🚀 Bot is starting...")
-updater.start_polling()
-updater.idle()
+app.run_polling()
